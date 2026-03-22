@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+from http_client import fetch
+from renderer import render
 
 
 def print_help():
@@ -26,8 +28,6 @@ def main():
         return
 
     if args.u:
-        from http_client import fetch
-        from renderer import render
         status, headers, body = fetch(args.u)
         print(render(body))
         return
