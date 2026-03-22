@@ -26,7 +26,10 @@ def main():
         return
 
     if args.u:
-        print(f"[TODO] Fetching URL: {args.u}")
+        from http_client import fetch
+        status, headers, body = fetch(args.u)
+        print(f"Status: {status}")
+        print(body[:300])
         return
 
     if args.s:
