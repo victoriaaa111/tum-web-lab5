@@ -1,7 +1,7 @@
 import socket
 import ssl
 from urllib.parse import urlparse
-import certifi
+
 
 def parse_url(url):
     if not url.startswith('http'):
@@ -35,7 +35,7 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
 
     # use SSL if needed
     if use_ssl:
-        context = ssl.create_default_context(cafile=certifi.where())
+        context = ssl.create_default_context()
         sock = context.wrap_socket(sock, server_hostname=host)
 
     # send request
@@ -68,3 +68,29 @@ def parse_response(raw):
             headers[k.strip().lower()] = v.strip()
 
     return status_code, headers, body
+
+
+def fetch(url, extra_headers=None, max_redirects=5):
+    if extra_headers is None:
+        extra_headers = {}
+
+    for _ in range(max_redirects):
+        host, path, port, use_ssl = parse_url(url)
+        raw = raw_request(host, path, port, use_ssl, extra_headers)
+        status, headers, body = parse_response(raw)
+
+        if status in (301, 302, 303, 307, 308):
+            location = headers.get('location')
+            if not location:
+                break
+            # handle relative redirects
+            if location.startswith('/'):
+                scheme = 'https' if use_ssl else 'http'
+                location = f"{scheme}://{host}{location}"
+            print(f"  -> redirect {status} to {location}")
+            url = location
+            continue
+
+        return status, headers, body
+
+    raise Exception(f"Too many redirects fetching {url}")
