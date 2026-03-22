@@ -67,6 +67,10 @@ def parse_response(raw):
             k, _, v = line.partition(':')
             headers[k.strip().lower()] = v.strip()
 
+    # decode chunked transfer encoding if needed
+    if headers.get('transfer-encoding', '').lower() == 'chunked':
+        body = decode_chunked(body)
+
     return status_code, headers, body
 
 
@@ -94,3 +98,22 @@ def fetch(url, extra_headers=None, max_redirects=5):
         return status, headers, body
 
     raise Exception(f"Too many redirects fetching {url}")
+
+
+def decode_chunked(body):
+    result = ""
+    while body:
+        # read the chunk size line (hex number)
+        size_line, _, body = body.partition('\r\n')
+        size_line = size_line.strip()
+        if not size_line:
+            continue
+        try:
+            size = int(size_line, 16)
+        except ValueError:
+            break
+        if size == 0:
+            break
+        result += body[:size]
+        body = body[size + 2:]  # skip \r\n after chunk data
+    return result
