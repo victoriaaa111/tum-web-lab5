@@ -23,7 +23,8 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
     request = f"GET {path} HTTP/1.1\r\n"
     request += f"Host: {host}\r\n"
     request += "Connection: close\r\n"
-    request += "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+    request += "User-Agent: go2web/1.0\r\n"
+    request += "Accept-Encoding: identity\r\n"
     for k, v in extra_headers.items():
         request += f"{k}: {v}\r\n"
     request += "\r\n"
@@ -43,17 +44,12 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
 
     # read full response
     response = b""
-    sock.settimeout(5)
-    try:
-        while True:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            response += chunk
-    except socket.timeout:
-        pass
-    finally:
-        sock.close()
+    while True:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        response += chunk
+    sock.close()
 
     return response.decode('utf-8', errors='replace')
 
@@ -72,16 +68,19 @@ def parse_response(raw):
             k, _, v = line.partition(':')
             headers[k.strip().lower()] = v.strip()
 
-    # decode chunked transfer encoding if needed
-    if headers.get('transfer-encoding', '').lower() == 'chunked':
-        body = decode_chunked(body)
-
     return status_code, headers, body
 
 
-def fetch(url, extra_headers=None, max_redirects=5):
+def fetch(url, extra_headers=None, max_redirects=5, use_cache=True):
     if extra_headers is None:
         extra_headers = {}
+
+    if use_cache:
+        from cache import cache_get, cache_set
+        cached = cache_get(url)
+        if cached:
+            print(f"  -> cache hit for {url}")
+            return cached
 
     for _ in range(max_redirects):
         host, path, port, use_ssl = parse_url(url)
@@ -100,25 +99,9 @@ def fetch(url, extra_headers=None, max_redirects=5):
             url = location
             continue
 
+        if use_cache:
+            from cache import cache_get, cache_set
+            cache_set(url, status, headers, body)
         return status, headers, body
 
     raise Exception(f"Too many redirects fetching {url}")
-
-
-def decode_chunked(body):
-    result = ""
-    while body:
-        # read the chunk size line (hex number)
-        size_line, _, body = body.partition('\r\n')
-        size_line = size_line.strip()
-        if not size_line:
-            continue
-        try:
-            size = int(size_line, 16)
-        except ValueError:
-            break
-        if size == 0:
-            break
-        result += body[:size]
-        body = body[size + 2:]  # skip \r\n after chunk data
-    return result
