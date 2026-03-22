@@ -30,7 +30,10 @@ def main():
 
     if args.u:
         status, headers, body = fetch(args.u)
-        print(render(body))
+        if headers.get('transfer-encoding', '').lower() == 'chunked':
+            from http_client import decode_chunked
+            body = decode_chunked(body)
+        print(render(body, headers.get('content-type', '')))
         return
 
     if args.s:
