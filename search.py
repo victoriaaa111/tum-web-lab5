@@ -1,6 +1,9 @@
 from urllib.parse import quote_plus, unquote
 from http_client import fetch
 from bs4 import BeautifulSoup
+from renderer import render
+import time
+
 
 
 def extract_real_url(ddg_url):
@@ -17,7 +20,22 @@ def search(term):
     query = quote_plus(term)
     url = f"https://html.duckduckgo.com/html/?q={query}"
 
-    _, headers, body = fetch(url)
+    extra_headers = {
+        "Accept-Encoding": "identity",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cookie": "kl=en-us; s=l; ss=-1",
+        "Cache-Control": "no-cache",
+        "Referer": "https://duckduckgo.com/"
+    }
+
+    _, headers, body = fetch(url, extra_headers=extra_headers)
+
+    # if DDG rate limits, wait and retry once
+    if body.count('result__a') == 0:
+        time.sleep(2)
+        _, headers, body = fetch(url, extra_headers=extra_headers)
+
     soup = BeautifulSoup(body, 'html.parser')
 
     results = []
