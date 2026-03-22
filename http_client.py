@@ -23,7 +23,7 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
     request = f"GET {path} HTTP/1.1\r\n"
     request += f"Host: {host}\r\n"
     request += "Connection: close\r\n"
-    request += "User-Agent: go2web/1.0\r\n"
+    request += "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
     for k, v in extra_headers.items():
         request += f"{k}: {v}\r\n"
     request += "\r\n"
@@ -43,12 +43,17 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
 
     # read full response
     response = b""
-    while True:
-        chunk = sock.recv(4096)
-        if not chunk:
-            break
-        response += chunk
-    sock.close()
+    sock.settimeout(5)
+    try:
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+    except socket.timeout:
+        pass
+    finally:
+        sock.close()
 
     return response.decode('utf-8', errors='replace')
 
