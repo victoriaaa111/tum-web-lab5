@@ -9,4 +9,7 @@
 .cache/
 .idea/
 __pycache__/
-*.pyc
+*.pyc.venv/
+.DS_Store
+__pycache__/
+.cache/

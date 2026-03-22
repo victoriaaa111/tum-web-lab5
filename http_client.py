@@ -1,7 +1,9 @@
 import socket
 import ssl
 from urllib.parse import urlparse
-
+import certifi
+import os
+import platform
 
 def parse_url(url):
     if not url.startswith('http'):
@@ -25,6 +27,7 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
     request += "Connection: close\r\n"
     request += "User-Agent: go2web/1.0\r\n"
     request += "Accept-Encoding: identity\r\n"
+    request += "Accept: application/json, text/html;q=0.9, */*;q=0.8\r\n"
     for k, v in extra_headers.items():
         request += f"{k}: {v}\r\n"
     request += "\r\n"
@@ -36,7 +39,9 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
 
     # use SSL if needed
     if use_ssl:
-        context = ssl.create_default_context()
+        context = ssl.create_default_context(cafile=certifi.where())
+        if platform.system() == 'Darwin' and os.path.exists('/etc/ssl/cert.pem'):
+            context.load_verify_locations('/etc/ssl/cert.pem')
         sock = context.wrap_socket(sock, server_hostname=host)
 
     # send request
@@ -55,7 +60,6 @@ def raw_request(host, path, port, use_ssl, extra_headers=None):
 
 
 def parse_response(raw):
-    # split headers from body at the blank line
     header_section, _, body = raw.partition('\r\n\r\n')
 
     lines = header_section.split('\r\n')
@@ -105,3 +109,25 @@ def fetch(url, extra_headers=None, max_redirects=5, use_cache=True):
         return status, headers, body
 
     raise Exception(f"Too many redirects fetching {url}")
+
+
+def decode_chunked(body):
+    decoded = []
+    while body:
+        line_end = body.find('\r\n')
+        if line_end == -1:
+            break
+        size_str = body[:line_end].strip()
+        if not size_str:
+            body = body[line_end + 2:]
+            continue
+        try:
+            chunk_size = int(size_str, 16)
+        except ValueError:
+            return body  # not actually chunked, return as-is
+        if chunk_size == 0:
+            break
+        chunk_data = body[line_end + 2:line_end + 2 + chunk_size]
+        decoded.append(chunk_data)
+        body = body[line_end + 2 + chunk_size + 2:]
+    return ''.join(decoded)
