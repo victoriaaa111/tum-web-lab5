@@ -3,6 +3,7 @@ import argparse
 import sys
 from http_client import fetch
 from renderer import render
+from search import search
 
 
 def print_help():
@@ -34,7 +35,7 @@ def main():
 
     if args.s:
         term = ' '.join(args.s)
-        print(f"[TODO] Searching for: {term}")
+        search(term)
         return
 
 
