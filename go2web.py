@@ -27,9 +27,9 @@ def main():
 
     if args.u:
         from http_client import fetch
+        from renderer import render
         status, headers, body = fetch(args.u)
-        print(f"Status: {status}")
-        print(body[:300])
+        print(render(body))
         return
 
     if args.s:
