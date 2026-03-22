@@ -56,4 +56,15 @@ def search(term):
         print(f"{i}. {title}")
         print(f"   {url}\n")
 
+    # clickable results
+    choice = input("Enter number to open (or press Enter to skip): ").strip()
+    if choice.isdigit():
+        idx = int(choice) - 1
+        if 0 <= idx < len(results):
+            title, url = results[idx]
+            print(f"\nFetching: {url}\n")
+            _, _, page_body = fetch(url)
+            print(render(page_body))
+        else:
+            print("Invalid number.")
     return results[:10]
