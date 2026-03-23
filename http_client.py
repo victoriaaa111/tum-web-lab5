@@ -4,6 +4,8 @@ from urllib.parse import urlparse
 import certifi
 import os
 import platform
+from cache import cache_get, cache_set
+
 
 def parse_url(url):
     if not url.startswith('http'):
@@ -78,9 +80,9 @@ def parse_response(raw):
 def fetch(url, extra_headers=None, max_redirects=5, use_cache=True):
     if extra_headers is None:
         extra_headers = {}
+    original_url = url
 
     if use_cache:
-        from cache import cache_get, cache_set
         cached = cache_get(url)
         if cached:
             print(f"  -> cache hit for {url}")
@@ -103,9 +105,12 @@ def fetch(url, extra_headers=None, max_redirects=5, use_cache=True):
             url = location
             continue
 
-        if use_cache:
-            from cache import cache_get, cache_set
+        if use_cache and status == 200:
+            from cache import cache_set
             cache_set(url, status, headers, body)
+            # also cache the original URL if we followed redirects
+            if url != original_url:
+                cache_set(original_url, status, headers, body)
         return status, headers, body
 
     raise Exception(f"Too many redirects fetching {url}")
