@@ -64,9 +64,6 @@ def search(term):
             title, url = results[idx]
             print(f"\nFetching: {url}\n")
             _, headers, page_body = fetch(url)
-            if headers.get('transfer-encoding', '').lower() == 'chunked':
-                from http_client import decode_chunked
-                page_body = decode_chunked(page_body)
             print(render(page_body, headers.get('content-type', '')))
         else:
             print("Invalid number.")

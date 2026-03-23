@@ -93,6 +93,15 @@ def fetch(url, extra_headers=None, max_redirects=5, use_cache=True):
         raw = raw_request(host, path, port, use_ssl, extra_headers)
         status, headers, body = parse_response(raw)
 
+        if headers.get('transfer-encoding', '').lower() == 'chunked':
+            # only decode if body actually looks chunked
+            first_line = body.split('\r\n', 1)[0].strip()
+            try:
+                int(first_line, 16)
+                body = decode_chunked(body)
+            except ValueError:
+                pass
+
         if status in (301, 302, 303, 307, 308):
             location = headers.get('location')
             if not location:
@@ -121,6 +130,7 @@ def decode_chunked(body):
     while body:
         line_end = body.find('\r\n')
         if line_end == -1:
+            decoded.append(body)
             break
         size_str = body[:line_end].strip()
         if not size_str:
@@ -129,7 +139,8 @@ def decode_chunked(body):
         try:
             chunk_size = int(size_str, 16)
         except ValueError:
-            return body  # not actually chunked, return as-is
+            decoded.append(body)  # not chunked from here, keep the rest
+            break
         if chunk_size == 0:
             break
         chunk_data = body[line_end + 2:line_end + 2 + chunk_size]
