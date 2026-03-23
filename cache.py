@@ -4,7 +4,7 @@ import time
 import hashlib
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
-CACHE_TTL = 3600  # 1 hour
+CACHE_TTL = 300  # 5min
 MAX_ENTRIES = 50
 
 
